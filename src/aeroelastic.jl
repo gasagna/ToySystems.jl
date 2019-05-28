@@ -1,5 +1,5 @@
 export AeroOscillator,
-       AeroOscillatorLin
+       AeroOscillatorLin,
        no_forcing,
        dfdQ_forcing
 
