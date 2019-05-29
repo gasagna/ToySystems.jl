@@ -1,3 +1,5 @@
+module AeroOscillatorEq
+
 export AeroOscillator,
        AeroOscillatorLin,
        no_forcing,
@@ -85,3 +87,5 @@ no_forcing(t, x, dxdt, y, dydt) = dydt
 dfdQ_forcing(t, x, dxdt, y, dydt) =
     (@inbounds dydt[3] += -(_B[1, 1]*x[1] + _B[1, 2]*x[2]);
      @inbounds dydt[4] += -(_B[2, 1]*x[1] + _B[2, 2]*x[2]); dydt)
+
+end
