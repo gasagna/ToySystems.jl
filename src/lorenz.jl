@@ -82,7 +82,7 @@ function (eq::LorenzJacobian)(t, u, J)
         J[1, 3] =  0
         J[2, 1] =  28 - z/eq.gamma
         J[2, 2] =  -1
-        J[2, 3] =  x/eq.gamma
+        J[2, 3] =  -x/eq.gamma
         J[3, 1] =  y*eq.gamma
         J[3, 2] =  x*eq.gamma
         J[3, 3] =  -8/3
