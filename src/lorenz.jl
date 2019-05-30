@@ -51,7 +51,6 @@ LorenzLin(x::Vararg{Any, N}) where {N} = LorenzLin{N, typeof(x)}(x)
 # defaults to homogeneous problem
 LorenzLin() = LorenzLin(no_forcing)
 
-
 # Linearised equations
 @generated function (eq::LorenzLin{N})(t, u, dudt, v, dvdt) where {N}
     quote
@@ -71,4 +70,22 @@ LorenzLin() = LorenzLin(no_forcing)
     end
 end
 
+struct LorenzJacobian 
+    gamma::Float64
+end
+
+function (eq::LorenzJacobian)(t, u, J)
+    x, y, z = u
+    @inbounds begin
+        J[1, 1] = -10
+        J[1, 2] =  10
+        J[1, 3] =  0
+        J[2, 1] =  28 - z/eq.gamma
+        J[2, 2] =  -1
+        J[2, 3] =  x/eq.gamma
+        J[3, 1] =  y*eq.gamma
+        J[3, 2] =  x*eq.gamma
+        J[3, 3] =  -8/3
+    end
+    return J
 end
