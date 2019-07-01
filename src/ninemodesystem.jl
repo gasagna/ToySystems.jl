@@ -76,7 +76,11 @@ NineModeSystemLin(Re::Real) = NineModeSystemLin(Re, no_forcing)
     quote
         # compute linear part
         _NineModeSystemJacobian(t, u, eq.J, eq.invRe, $(Val(ISADJOINT)))
+        if ISADJOINT
+            eq.J .= .- eq.J
+        end 
         LinearAlgebra.mul!(dvdt, eq.J, v)
+
         # add forcing (can be nothing too)
         Base.Cartesian.@nexprs $N i->eq.forcings[i](t, u, dudt, v, dvdt)
 
