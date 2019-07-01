@@ -3,7 +3,6 @@ module NineModeSystemEq
 export NineModeSystem,
        NineModeSystemLin,
        no_forcing,
-       f_forcing
 
 # Domain size
 const Lx = 4π
@@ -66,7 +65,7 @@ NineModeSystemLin(Re::Real, x::Vararg{Any, N}) where {N} =
     NineModeSystemLin{N, typeof(x)}(zeros(9, 9), 1/Re, x)
 
 # defaults to homogeneous problem
-NineModeSystemLin(Re::Real) = NineModeSystemLin(Re, no_forcing)
+NineModeSystemLin(Re::Real) = NineModeSystemLin(Re, tuple())
 
 # Linearised equations
 @generated function (eq::NineModeSystemLin{N})(t::Real,
