@@ -1,8 +1,9 @@
 module NineModeSystemEq
 
+using ToySystems: no_forcing
+
 export NineModeSystem,
-       NineModeSystemLin,
-       no_forcing
+       NineModeSystemLin
 
 # Domain size
 const Lx = 4π
@@ -23,8 +24,6 @@ const sqrt6 = sqrt(6)
 const sqrtcβcβpluscγcγ = sqrt(cβcβ + cγcγ)
 const sqrtcαcαpluscγcγ = sqrt(cαcα + cγcγ)
 const sqrtcαcαpluscβcβpluscγcγ = sqrt(cαcα + cβcβ + cγcγ)
-
-
 
 # ///////////////////
 # Nonlinear equations
@@ -54,30 +53,34 @@ end
 # ////////////////////
 # Linearised equations
 # ////////////////////
-struct NineModeSystemLin{N, T<:NTuple{N, Base.Callable}}
+struct NineModeSystemLin{ISADJOINT, N, T<:NTuple{N, Base.Callable}}
            J::Matrix{Float64} # use this matrix for calculating the linearised operator
        invRe::Float64         # inverse of Reynolds number
     forcings::T               # a tuple of functions with signature (t, u, dudt, v, dvdt)
 end
 
 # slurp arguments
-NineModeSystemLin(Re::Real, x::Vararg{Any, N}) where {N} =
-    NineModeSystemLin{N, typeof(x)}(zeros(9, 9), 1/Re, x)
+NineModeSystemLin(Re::Real, isadjoint::Bool, x::Vararg{Any, N}) where {N} =
+    NineModeSystemLin{isadjoint, N, typeof(x)}(zeros(9, 9), 1/Re, x)
 
 # defaults to homogeneous problem
-NineModeSystemLin(Re::Real) = NineModeSystemLin(Re, tuple())
+NineModeSystemLin(Re::Real) = NineModeSystemLin(Re, no_forcing)
 
 # Linearised equations
-@generated function (eq::NineModeSystemLin{N})(t::Real,
-                                               u::AbstractVector,
-                                            dudt::AbstractVector,
-                                               v::AbstractVector,
-                                            dvdt::AbstractVector) where {N}
+@generated function (eq::NineModeSystemLin{ISADJOINT, N})(t::Real,
+                                                          u::AbstractVector,
+                                                       dudt::AbstractVector,
+                                                          v::AbstractVector,
+                                                       dvdt::AbstractVector) where {ISADJOINT, N}
     quote
         # compute linear part
         _NineModeSystemJacobian(t, u, eq.J, eq.invRe)
-        mul!(dvdt, eq.J, v)
-
+        if ISADJOINT
+            transpose!(eq.J)
+            mul!(dvdt, eq.J, v)
+        else
+            mul!(dvdt, eq.J, v)
+        end
         # add forcing (can be nothing too)
         Base.Cartesian.@nexprs $N i->eq.forcings[i](t, u, dudt, v, dvdt)
 
