@@ -6,8 +6,8 @@ export NineModeSystem,
        f_forcing
 
 # Domain size
-const Lx=4π
-const Lz=2π
+const Lx = 4π
+const Lz = 2π
 
 # Define system constants
 const cα = 2π/Lx
