@@ -2,7 +2,6 @@ module AeroOscillatorEq
 
 export AeroOscillator,
        AeroOscillatorLin,
-       no_forcing,
        dfdQ_forcing
 
 
@@ -79,9 +78,6 @@ end
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 # FORCING TERMS
-
-# no forcing (for the homogeneous equation)
-no_forcing(t, x, dxdt, y, dydt) = dydt
 
 # sensitivity ∂f/∂Q
 dfdQ_forcing(t, x, dxdt, y, dydt) =
