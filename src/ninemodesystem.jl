@@ -1,5 +1,6 @@
 module NineModeSystemEq
 
+using LinearAlgebra
 using ToySystems: no_forcing
 
 export NineModeSystem,
@@ -77,9 +78,9 @@ NineModeSystemLin(Re::Real) = NineModeSystemLin(Re, no_forcing)
         _NineModeSystemJacobian(t, u, eq.J, eq.invRe)
         if ISADJOINT
             transpose!(eq.J)
-            mul!(dvdt, eq.J, v)
+            LinearAlgebra.mul!(dvdt, eq.J, v)
         else
-            mul!(dvdt, eq.J, v)
+            LinearAlgebra.mul!(dvdt, eq.J, v)
         end
         # add forcing (can be nothing too)
         Base.Cartesian.@nexprs $N i->eq.forcings[i](t, u, dudt, v, dvdt)
