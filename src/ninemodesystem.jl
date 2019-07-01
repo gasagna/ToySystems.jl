@@ -2,7 +2,7 @@ module NineModeSystemEq
 
 export NineModeSystem,
        NineModeSystemLin,
-       no_forcing,
+       no_forcing
 
 # Domain size
 const Lx = 4π
