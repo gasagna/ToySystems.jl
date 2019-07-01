@@ -75,9 +75,8 @@ NineModeSystemLin(Re::Real) = NineModeSystemLin(Re, no_forcing)
                                                        dvdt::AbstractVector) where {ISADJOINT, N}
     quote
         # compute linear part
-        _NineModeSystemJacobian(t, u, eq.J, eq.invRe)
+        _NineModeSystemJacobian(t, u, eq.J, eq.invRe, $(Val(ISADJOINT)))
         if ISADJOINT
-            transpose!(eq.J)
             LinearAlgebra.mul!(dvdt, eq.J, v)
         else
             LinearAlgebra.mul!(dvdt, eq.J, v)
@@ -94,99 +93,102 @@ end
                         v::AbstractVector,
                      dvdt::AbstractVector) = eq(t, u, u, v, dvdt)
 
-function _NineModeSystemJacobian(t::Real, u::AbstractVector, J::Matrix, invRe::Real)
+@inline _mayswap(a, b, ::Val(true))  = (b, a)
+@inline _mayswap(a, b, ::Val(false)) = (a, b)
+
+function _NineModeSystemJacobian(t::Real, u::AbstractVector, J::Matrix, invRe::Real, ISADJOINT)
     @inbounds begin
         u1, u2, u3, u4, u5, u6, u7, u8, u9 = u
 
-        J[1, 1] = -cβcβ*invRe
-        J[2, 1] = -sqrt32*cβcγ*u3/sqrtcβcβpluscγcγ
-        J[3, 1] = zero(eltype(J))
-        J[4, 1] = -sqrt6*cα*u5/6
-        J[5, 1] = sqrt6*cα*u4/6
-        J[6, 1] = sqrt6*cα*u7/6 + sqrt32*cβcγ*u8/sqrtcαcαpluscβcβpluscγcγ
-        J[7, 1] = -sqrt6*cα*u6/6
-        J[8, 1] = zero(eltype(J))
-        J[9, 1] = zero(eltype(J))
+        J[_mayswap(1, 1, ISADJOINT)..] = -cβcβ*invRe
+        J[_mayswap(2, 1, ISADJOINT)..] = -sqrt32*cβcγ*u3/sqrtcβcβpluscγcγ
+        J[_mayswap(3, 1, ISADJOINT)..] = zero(eltype(J))
+        J[_mayswap(4, 1, ISADJOINT)..] = -sqrt6*cα*u5/6
+        J[_mayswap(5, 1, ISADJOINT)..] = sqrt6*cα*u4/6
+        J[_mayswap(6, 1, ISADJOINT)..] = sqrt6*cα*u7/6 + sqrt32*cβcγ*u8/sqrtcαcαpluscβcβpluscγcγ
+        J[_mayswap(7, 1, ISADJOINT)..] = -sqrt6*cα*u6/6
+        J[_mayswap(8, 1, ISADJOINT)..] = zero(eltype(J))
+        J[_mayswap(9, 1, ISADJOINT)..] = zero(eltype(J))
 
-        J[1, 2] = sqrt32*cβcγ*u3/sqrtcβcβpluscγcγ
-        J[2, 2] = -(4*cβcβ/3 + cγcγ)*invRe
-        J[3, 2] = zero(eltype(J))
-        J[4, 2] = -5/3*sqrt23*cαcα*u6/sqrtcαcαpluscγcγ
-        J[5, 2] = sqrt6*cαcα*u7/(6*sqrtcαcαpluscγcγ) - sqrt6*cαcβcγ*u8/(6*sqrtcαcαpluscγcγ*sqrtcαcαpluscβcβpluscγcγ)
-        J[6, 2] = 5/3*sqrt23*(cαcα-cγcγ)*u4/sqrtcαcαpluscγcγ
-        J[7, 2] = sqrt6*u5*(-cαcα + cγcγ)/(6*sqrtcαcαpluscγcγ)
-        J[8, 2] = sqrt23*cαcβcγ*u5/(sqrtcαcαpluscγcγ*sqrtcαcαpluscβcβpluscγcγ)
-        J[9, 2] = sqrt32*cβcγ*u3/sqrtcβcβpluscγcγ
+        J[_mayswap(1, 2, ISADJOINT)..] = sqrt32*cβcγ*u3/sqrtcβcβpluscγcγ
+        J[_mayswap(2, 2, ISADJOINT)..] = -(4*cβcβ/3 + cγcγ)*invRe
+        J[_mayswap(3, 2, ISADJOINT)..] = zero(eltype(J))
+        J[_mayswap(4, 2, ISADJOINT)..] = -5/3*sqrt23*cαcα*u6/sqrtcαcαpluscγcγ
+        J[_mayswap(5, 2, ISADJOINT)..] = sqrt6*cαcα*u7/(6*sqrtcαcαpluscγcγ) - sqrt6*cαcβcγ*u8/(6*sqrtcαcαpluscγcγ*sqrtcαcαpluscβcβpluscγcγ)
+        J[_mayswap(6, 2, ISADJOINT)..] = 5/3*sqrt23*(cαcα-cγcγ)*u4/sqrtcαcαpluscγcγ
+        J[_mayswap(7, 2, ISADJOINT)..] = sqrt6*u5*(-cαcα + cγcγ)/(6*sqrtcαcαpluscγcγ)
+        J[_mayswap(8, 2, ISADJOINT)..] = sqrt23*cαcβcγ*u5/(sqrtcαcαpluscγcγ*sqrtcαcαpluscβcβpluscγcγ)
+        J[_mayswap(9, 2, ISADJOINT)..] = sqrt32*cβcγ*u3/sqrtcβcβpluscγcγ
 
-        J[1, 3] = sqrt32*cβcγ*u2/sqrtcβcβpluscγcγ
-        J[2, 3] = -sqrt32*cβcγ*(u1 + u9)/sqrtcβcβpluscγcγ
-        J[3, 3] = -(cβcβ + cγcγ)*invRe
-        J[4, 3] = -sqrt32*cαcα*cβcβ*u8/(sqrtcαcαpluscγcγ*sqrtcβcβpluscγcγ*sqrtcαcαpluscβcβpluscγcγ) - sqrt32*cαcβcγ*u7/(sqrtcαcαpluscγcγ*sqrtcβcβpluscγcγ)
-        J[5, 3] = sqrt23*cαcβcγ*u6/(sqrtcαcαpluscγcγ*sqrtcβcβpluscγcγ)
-        J[6, 3] = -2*sqrt23*cαcβcγ*u5/(sqrtcαcαpluscγcγ*sqrtcβcβpluscγcγ)
-        J[7, 3] = sqrt6*cαcβcγ*u4/(6*sqrtcαcαpluscγcγ*sqrtcβcβpluscγcγ)
-        J[8, 3] = sqrt6*cγcγ*u4*(3*cαcα - cβcβ + 3*cγcγ)/(6*sqrtcαcαpluscγcγ*sqrtcβcβpluscγcγ*sqrtcαcαpluscβcβpluscγcγ)
-        J[9, 3] = sqrt32*cβcγ*u2/sqrtcβcβpluscγcγ
+        J[_mayswap(1, 3, ISADJOINT)..] = sqrt32*cβcγ*u2/sqrtcβcβpluscγcγ
+        J[_mayswap(2, 3, ISADJOINT)..] = -sqrt32*cβcγ*(u1 + u9)/sqrtcβcβpluscγcγ
+        J[_mayswap(3, 3, ISADJOINT)..] = -(cβcβ + cγcγ)*invRe
+        J[_mayswap(4, 3, ISADJOINT)..] = -sqrt32*cαcα*cβcβ*u8/(sqrtcαcαpluscγcγ*sqrtcβcβpluscγcγ*sqrtcαcαpluscβcβpluscγcγ) - sqrt32*cαcβcγ*u7/(sqrtcαcαpluscγcγ*sqrtcβcβpluscγcγ)
+        J[_mayswap(5, 3, ISADJOINT)..] = sqrt23*cαcβcγ*u6/(sqrtcαcαpluscγcγ*sqrtcβcβpluscγcγ)
+        J[_mayswap(6, 3, ISADJOINT)..] = -2*sqrt23*cαcβcγ*u5/(sqrtcαcαpluscγcγ*sqrtcβcβpluscγcγ)
+        J[_mayswap(7, 3, ISADJOINT)..] = sqrt6*cαcβcγ*u4/(6*sqrtcαcαpluscγcγ*sqrtcβcβpluscγcγ)
+        J[_mayswap(8, 3, ISADJOINT)..] = sqrt6*cγcγ*u4*(3*cαcα - cβcβ + 3*cγcγ)/(6*sqrtcαcαpluscγcγ*sqrtcβcβpluscγcγ*sqrtcαcαpluscβcβpluscγcγ)
+        J[_mayswap(9, 3, ISADJOINT)..] = sqrt32*cβcγ*u2/sqrtcβcβpluscγcγ
 
-        J[1, 4] = zero(eltype(J))
-        J[2, 4] = 5/3*sqrt23*cγcγ*u6/sqrtcαcαpluscγcγ
-        J[3, 4] = sqrt23*cαcβcγ*u7/(sqrtcαcαpluscγcγ*sqrtcβcβpluscγcγ) + (cβcβ*(3*cαcα+cγcγ)-3*cγcγ*(cαcα+cγcγ))*u8/(sqrt6*sqrtcαcαpluscγcγ*sqrtcβcβpluscγcγ*sqrtcαcαpluscβcβpluscγcγ)
-        J[4, 4] = -(3*cαcα + 4*cβcβ)/(3/invRe)
-        J[5, 4] = sqrt6*cα*u1/6 + sqrt6*cα*u9/6
-        J[6, 4] = 5/3*sqrt23*u2*(cαcα-cγcγ)/sqrtcαcαpluscγcγ
-        J[7, 4] = sqrt6*cαcβcγ*u3/(6*sqrtcαcαpluscγcγ*sqrtcβcβpluscγcγ)
-        J[8, 4] = sqrt6*cγcγ*u3*(3*cαcα - cβcβ + 3*cγcγ)/(6*sqrtcαcαpluscγcγ*sqrtcβcβpluscγcγ*sqrtcαcαpluscβcβpluscγcγ)
-        J[9, 4] = zero(eltype(J))
+        J[_mayswap(1, 4, ISADJOINT)..] = zero(eltype(J))
+        J[_mayswap(2, 4, ISADJOINT)..] = 5/3*sqrt23*cγcγ*u6/sqrtcαcαpluscγcγ
+        J[_mayswap(3, 4, ISADJOINT)..] = sqrt23*cαcβcγ*u7/(sqrtcαcαpluscγcγ*sqrtcβcβpluscγcγ) + (cβcβ*(3*cαcα+cγcγ)-3*cγcγ*(cαcα+cγcγ))*u8/(sqrt6*sqrtcαcαpluscγcγ*sqrtcβcβpluscγcγ*sqrtcαcαpluscβcβpluscγcγ)
+        J[_mayswap(4, 4, ISADJOINT)..] = -(3*cαcα + 4*cβcβ)/(3/invRe)
+        J[_mayswap(5, 4, ISADJOINT)..] = sqrt6*cα*u1/6 + sqrt6*cα*u9/6
+        J[_mayswap(6, 4, ISADJOINT)..] = 5/3*sqrt23*u2*(cαcα-cγcγ)/sqrtcαcαpluscγcγ
+        J[_mayswap(7, 4, ISADJOINT)..] = sqrt6*cαcβcγ*u3/(6*sqrtcαcαpluscγcγ*sqrtcβcβpluscγcγ)
+        J[_mayswap(8, 4, ISADJOINT)..] = sqrt6*cγcγ*u3*(3*cαcα - cβcβ + 3*cγcγ)/(6*sqrtcαcαpluscγcγ*sqrtcβcβpluscγcγ*sqrtcαcαpluscβcβpluscγcγ)
+        J[_mayswap(9, 4, ISADJOINT)..] = zero(eltype(J))
 
-        J[1, 5] = zero(eltype(J))
-        J[2, 5] = -sqrt6*cαcβcγ*u8/(6*sqrtcαcαpluscγcγ*sqrtcαcαpluscβcβpluscγcγ) - sqrt6*cγcγ*u7/(6*sqrtcαcαpluscγcγ)
-        J[3, 5] = sqrt23*cαcβcγ*u6/(sqrtcαcαpluscγcγ*sqrtcβcβpluscγcγ)
-        J[4, 5] = -sqrt6*cα*u1/6 - sqrt6*cα*u9/6
-        J[5, 5] = -(cαcα + cβcβ)*invRe
-        J[6, 5] = -2*sqrt23*cαcβcγ*u3/(sqrtcαcαpluscγcγ*sqrtcβcβpluscγcγ)
-        J[7, 5] = sqrt6*u2*(-cαcα + cγcγ)/(6*sqrtcαcαpluscγcγ)
-        J[8, 5] = sqrt23*cαcβcγ*u2/(sqrtcαcαpluscγcγ*sqrtcαcαpluscβcβpluscγcγ)
-        J[9, 5] = zero(eltype(J))
+        J[_mayswap(1, 5, ISADJOINT)..] = zero(eltype(J))
+        J[_mayswap(2, 5, ISADJOINT)..] = -sqrt6*cαcβcγ*u8/(6*sqrtcαcαpluscγcγ*sqrtcαcαpluscβcβpluscγcγ) - sqrt6*cγcγ*u7/(6*sqrtcαcαpluscγcγ)
+        J[_mayswap(3, 5, ISADJOINT)..] = sqrt23*cαcβcγ*u6/(sqrtcαcαpluscγcγ*sqrtcβcβpluscγcγ)
+        J[_mayswap(4, 5, ISADJOINT)..] = -sqrt6*cα*u1/6 - sqrt6*cα*u9/6
+        J[_mayswap(5, 5, ISADJOINT)..] = -(cαcα + cβcβ)*invRe
+        J[_mayswap(6, 5, ISADJOINT)..] = -2*sqrt23*cαcβcγ*u3/(sqrtcαcαpluscγcγ*sqrtcβcβpluscγcγ)
+        J[_mayswap(7, 5, ISADJOINT)..] = sqrt6*u2*(-cαcα + cγcγ)/(6*sqrtcαcαpluscγcγ)
+        J[_mayswap(8, 5, ISADJOINT)..] = sqrt23*cαcβcγ*u2/(sqrtcαcαpluscγcγ*sqrtcαcαpluscβcβpluscγcγ)
+        J[_mayswap(9, 5, ISADJOINT)..] = zero(eltype(J))
 
-        J[1, 6] = -sqrt32*cβcγ*u8/sqrtcαcαpluscβcβpluscγcγ
-        J[2, 6] = 5/3*sqrt23*cγcγ*u4/sqrtcαcαpluscγcγ
-        J[3, 6] = sqrt23*cαcβcγ*u5/(sqrtcαcαpluscγcγ*sqrtcβcβpluscγcγ)
-        J[4, 6] = -5/3*sqrt23*cαcα*u2/sqrtcαcαpluscγcγ
-        J[5, 6] = sqrt23*cαcβcγ*u3/(sqrtcαcαpluscγcγ*sqrtcβcβpluscγcγ)
-        J[6, 6] = -(3*cαcα + 4*cβcβ + 3*cγcγ)/(3/invRe)
-        J[7, 6] = -sqrt6*cα*u1/6 - sqrt6*cα*u9/6
-        J[8, 6] = zero(eltype(J))
-        J[9, 6] = -sqrt32*cβcγ*u8/sqrtcαcαpluscβcβpluscγcγ
+        J[_mayswap(1, 6, ISADJOINT)..] = -sqrt32*cβcγ*u8/sqrtcαcαpluscβcβpluscγcγ
+        J[_mayswap(2, 6, ISADJOINT)..] = 5/3*sqrt23*cγcγ*u4/sqrtcαcαpluscγcγ
+        J[_mayswap(3, 6, ISADJOINT)..] = sqrt23*cαcβcγ*u5/(sqrtcαcαpluscγcγ*sqrtcβcβpluscγcγ)
+        J[_mayswap(4, 6, ISADJOINT)..] = -5/3*sqrt23*cαcα*u2/sqrtcαcαpluscγcγ
+        J[_mayswap(5, 6, ISADJOINT)..] = sqrt23*cαcβcγ*u3/(sqrtcαcαpluscγcγ*sqrtcβcβpluscγcγ)
+        J[_mayswap(6, 6, ISADJOINT)..] = -(3*cαcα + 4*cβcβ + 3*cγcγ)/(3/invRe)
+        J[_mayswap(7, 6, ISADJOINT)..] = -sqrt6*cα*u1/6 - sqrt6*cα*u9/6
+        J[_mayswap(8, 6, ISADJOINT)..] = zero(eltype(J))
+        J[_mayswap(9, 6, ISADJOINT)..] = -sqrt32*cβcγ*u8/sqrtcαcαpluscβcβpluscγcγ
 
-        J[1, 7] = zero(eltype(J))
-        J[2, 7] = -sqrt6*cγcγ*u5/(6*sqrtcαcαpluscγcγ)
-        J[3, 7] = sqrt23*cαcβcγ*u4/(sqrtcαcαpluscγcγ*sqrtcβcβpluscγcγ)
-        J[4, 7] = -sqrt32*cαcβcγ*u3/(sqrtcαcαpluscγcγ*sqrtcβcβpluscγcγ)
-        J[5, 7] = sqrt6*cαcα*u2/(6*sqrtcαcαpluscγcγ)
-        J[6, 7] = sqrt6*cα*u1/6 + sqrt6*cα*u9/6
-        J[7, 7] = -(cαcα + cβcβ + cγcγ)*invRe
-        J[8, 7] = zero(eltype(J))
-        J[9, 7] = zero(eltype(J))
+        J[_mayswap(1, 7, ISADJOINT)..] = zero(eltype(J))
+        J[_mayswap(2, 7, ISADJOINT)..] = -sqrt6*cγcγ*u5/(6*sqrtcαcαpluscγcγ)
+        J[_mayswap(3, 7, ISADJOINT)..] = sqrt23*cαcβcγ*u4/(sqrtcαcαpluscγcγ*sqrtcβcβpluscγcγ)
+        J[_mayswap(4, 7, ISADJOINT)..] = -sqrt32*cαcβcγ*u3/(sqrtcαcαpluscγcγ*sqrtcβcβpluscγcγ)
+        J[_mayswap(5, 7, ISADJOINT)..] = sqrt6*cαcα*u2/(6*sqrtcαcαpluscγcγ)
+        J[_mayswap(6, 7, ISADJOINT)..] = sqrt6*cα*u1/6 + sqrt6*cα*u9/6
+        J[_mayswap(7, 7, ISADJOINT)..] = -(cαcα + cβcβ + cγcγ)*invRe
+        J[_mayswap(8, 7, ISADJOINT)..] = zero(eltype(J))
+        J[_mayswap(9, 7, ISADJOINT)..] = zero(eltype(J))
 
-        J[1, 8] = -sqrt32*cβcγ*u6/sqrtcαcαpluscβcβpluscγcγ
-        J[2, 8] = -sqrt6*cαcβcγ*u5/(6*sqrtcαcαpluscγcγ*sqrtcαcαpluscβcβpluscγcγ)
-        J[3, 8] = sqrt6*u4*(cβcβ*(3*cαcα + cγcγ) - 3*cγcγ*(cαcα + cγcγ))/(6*sqrtcαcαpluscγcγ*sqrtcβcβpluscγcγ*sqrtcαcαpluscβcβpluscγcγ)
-        J[4, 8] = -sqrt32*cαcα*cβcβ*u3/(sqrtcαcαpluscγcγ*sqrtcβcβpluscγcγ*sqrtcαcαpluscβcβpluscγcγ)
-        J[5, 8] = -sqrt6*cαcβcγ*u2/(6*sqrtcαcαpluscγcγ*sqrtcαcαpluscβcβpluscγcγ)
-        J[6, 8] = sqrt32*cβcγ*u1/sqrtcαcαpluscβcβpluscγcγ + sqrt32*cβcγ*u9/sqrtcαcαpluscβcβpluscγcγ
-        J[7, 8] = zero(eltype(J))
-        J[8, 8] = -(cαcα + cβcβ + cγcγ)*invRe
-        J[9, 8] = -sqrt32*cβcγ*u6/sqrtcαcαpluscβcβpluscγcγ
+        J[_mayswap(1, 8, ISADJOINT)..] = -sqrt32*cβcγ*u6/sqrtcαcαpluscβcβpluscγcγ
+        J[_mayswap(2, 8, ISADJOINT)..] = -sqrt6*cαcβcγ*u5/(6*sqrtcαcαpluscγcγ*sqrtcαcαpluscβcβpluscγcγ)
+        J[_mayswap(3, 8, ISADJOINT)..] = sqrt6*u4*(cβcβ*(3*cαcα + cγcγ) - 3*cγcγ*(cαcα + cγcγ))/(6*sqrtcαcαpluscγcγ*sqrtcβcβpluscγcγ*sqrtcαcαpluscβcβpluscγcγ)
+        J[_mayswap(4, 8, ISADJOINT)..] = -sqrt32*cαcα*cβcβ*u3/(sqrtcαcαpluscγcγ*sqrtcβcβpluscγcγ*sqrtcαcαpluscβcβpluscγcγ)
+        J[_mayswap(5, 8, ISADJOINT)..] = -sqrt6*cαcβcγ*u2/(6*sqrtcαcαpluscγcγ*sqrtcαcαpluscβcβpluscγcγ)
+        J[_mayswap(6, 8, ISADJOINT)..] = sqrt32*cβcγ*u1/sqrtcαcαpluscβcβpluscγcγ + sqrt32*cβcγ*u9/sqrtcαcαpluscβcβpluscγcγ
+        J[_mayswap(7, 8, ISADJOINT)..] = zero(eltype(J))
+        J[_mayswap(8, 8, ISADJOINT)..] = -(cαcα + cβcβ + cγcγ)*invRe
+        J[_mayswap(9, 8, ISADJOINT)..] = -sqrt32*cβcγ*u6/sqrtcαcαpluscβcβpluscγcγ
 
-        J[1, 9] = zero(eltype(J))
-        J[2, 9] = -sqrt32*cβcγ*u3/sqrtcβcβpluscγcγ
-        J[3, 9] = zero(eltype(J))
-        J[4, 9] = -sqrt6*cα*u5/6
-        J[5, 9] = sqrt6*cα*u4/6
-        J[6, 9] = sqrt6*cα*u7/6 + sqrt32*cβcγ*u8/sqrtcαcαpluscβcβpluscγcγ
-        J[7, 9] = -sqrt6*cα*u6/6
-        J[8, 9] = zero(eltype(J))
-        J[9, 9] = -9*cβcβ*invRe
+        J[_mayswap(1, 9, ISADJOINT)..] = zero(eltype(J))
+        J[_mayswap(2, 9, ISADJOINT)..] = -sqrt32*cβcγ*u3/sqrtcβcβpluscγcγ
+        J[_mayswap(3, 9, ISADJOINT)..] = zero(eltype(J))
+        J[_mayswap(4, 9, ISADJOINT)..] = -sqrt6*cα*u5/6
+        J[_mayswap(5, 9, ISADJOINT)..] = sqrt6*cα*u4/6
+        J[_mayswap(6, 9, ISADJOINT)..] = sqrt6*cα*u7/6 + sqrt32*cβcγ*u8/sqrtcαcαpluscβcβpluscγcγ
+        J[_mayswap(7, 9, ISADJOINT)..] = -sqrt6*cα*u6/6
+        J[_mayswap(8, 9, ISADJOINT)..] = zero(eltype(J))
+        J[_mayswap(9, 9, ISADJOINT)..] = -9*cβcβ*invRe
     end
     return J
 end
