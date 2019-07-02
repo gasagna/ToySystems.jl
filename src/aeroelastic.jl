@@ -1,5 +1,8 @@
 module AeroOscillatorEq
 
+using LinearAlgebra
+using ToySystems: no_forcing, _mayswap
+
 export AeroOscillator,
        AeroOscillatorLin,
        dfdQ_forcing
@@ -44,36 +47,61 @@ end
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 # LINEARISED EQUATIONS
 
-struct AeroOscillatorLin{F}
-    forcing::F
+struct AeroOscillatorLin{F, ISADJOINT}
+          J::Matrix{Float64} # use this matrix for calculating the linearised operator
           Q::Float64
+    forcing::F
 end
 
-AeroOscillatorLin(Q::Real, forcing::F = no_forcing) where {F} =
-    AeroOscillatorLin{F}(forcing, Q)
+AeroOscillatorLin(Q::Real, isadjoint::Bool, forcing::F = no_forcing) where {F} =
+    AeroOscillatorLin{F, isadjoint}(zeros(4, 4), Q, forcing)
 
-function (eq::AeroOscillatorLin)(t::Real,
-                                 x::AbstractVector,
-                              dxdt::AbstractVector,
-                                 y::AbstractVector,
-                              dydt::AbstractVector)
-    # linearised equations
-    @inbounds begin
-        dydt[1] = y[3]
-        dydt[2] = y[4]
-        dydt[3] = ( -(_A[1, 1] + _B[1, 1]*eq.Q + 3*_C[1, 1]*x[1]^2)*y[1]
-                    -(_A[1, 2] + _B[1, 2]*eq.Q + 3*_C[1, 2]*x[2]^2)*y[2]
-                    - _D[1, 1]*y[3] - _D[1, 2]*y[4])
-        dydt[4] = ( -(_A[2, 1] + _B[2, 1]*eq.Q + 3*_C[2, 1]*x[1]^2)*y[1]
-                    -(_A[2, 2] + _B[2, 2]*eq.Q + 3*_C[2, 2]*x[2]^2)*y[2]
-                    - _D[2, 1]*y[3] - _D[2, 2]*y[4])
+@generated function (eq::AeroOscillatorLin{F, ISADJOINT})(t::Real,
+                                                          u::AbstractVector,
+                                                       dudt::AbstractVector,
+                                                          v::AbstractVector,
+                                                       dvdt::AbstractVector) where {F, ISADJOINT}
+    quote
+        _AeroOscillatorJacobian(t, u, eq.J, eq.Q, $(Val(ISADJOINT)))
+        LinearAlgebra.mul!(dvdt, eq.J, v)
+        eq.forcing(t, u, dudt, v, dvdt)
+        return dvdt
     end
-
-    # add forcing (can be nothing)
-    eq.forcing(t, x, dxdt, y, dydt)
-
-    return dydt
 end
+
+function _AeroOscillatorJacobian(t::Real,
+                                 u::AbstractVector,
+                                 J::Matrix,
+                                 Q::Real, ISADJOINT::Val)
+    
+    @inbounds begin
+        J[_mayswap(1, 1, ISADJOINT)...] = zero(eltype(J))
+        J[_mayswap(1, 2, ISADJOINT)...] = zero(eltype(J))
+        J[_mayswap(1, 3, ISADJOINT)...] =  one(eltype(J))
+        J[_mayswap(1, 4, ISADJOINT)...] = zero(eltype(J))
+
+        J[_mayswap(2, 1, ISADJOINT)...] = zero(eltype(J))
+        J[_mayswap(2, 2, ISADJOINT)...] = zero(eltype(J))
+        J[_mayswap(2, 3, ISADJOINT)...] = zero(eltype(J))
+        J[_mayswap(2, 4, ISADJOINT)...] =  one(eltype(J))
+
+        J[_mayswap(3, 1, ISADJOINT)...] = -(_A[1, 1] + _B[1, 1]*Q + 3*_C[1, 1]*u[1]^2)
+        J[_mayswap(3, 2, ISADJOINT)...] = -(_A[1, 2] + _B[1, 2]*Q + 3*_C[1, 2]*u[2]^2)
+        J[_mayswap(3, 3, ISADJOINT)...] = - _D[1, 1]
+        J[_mayswap(3, 4, ISADJOINT)...] = - _D[1, 2]
+
+        J[_mayswap(4, 1, ISADJOINT)...] = -(_A[2, 1] + _B[2, 1]*Q + 3*_C[2, 1]*u[1]^2)
+        J[_mayswap(4, 2, ISADJOINT)...] = -(_A[2, 2] + _B[2, 2]*Q + 3*_C[2, 2]*u[2]^2)
+        J[_mayswap(4, 3, ISADJOINT)...] = - _D[2, 1]
+        J[_mayswap(4, 4, ISADJOINT)...] = - _D[2, 2]
+    end
+    return J
+end
+
+(eq::AeroOscillatorLin)(t::Real,
+                        u::AbstractVector,
+                        v::AbstractVector,
+                     dvdt::AbstractVector) = eq(t, u, u, v, dvdt)
 
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #

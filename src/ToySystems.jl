@@ -2,6 +2,10 @@ module ToySystems
 
 export no_forcing, f_forcing
 
+# utils
+@inline _mayswap(a, b, ::Val{true})  = (b, a)
+@inline _mayswap(a, b, ::Val{false}) = (a, b)
+
 # //////////////////////////////////////////////
 # FORCING FUNCTIONS FOR THE LINEARISED EQUATIONS
 # Note that by default these functions add to

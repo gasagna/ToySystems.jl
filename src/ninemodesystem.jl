@@ -1,7 +1,7 @@
 module NineModeSystemEq
 
 using LinearAlgebra
-using ToySystems: no_forcing
+using ToySystems: no_forcing, _mayswap
 
 export NineModeSystem,
        NineModeSystemLin
@@ -89,9 +89,6 @@ end
                         u::AbstractVector,
                         v::AbstractVector,
                      dvdt::AbstractVector) = eq(t, u, u, v, dvdt)
-
-@inline _mayswap(a, b, ::Val{true})  = (b, a)
-@inline _mayswap(a, b, ::Val{false}) = (a, b)
 
 function _NineModeSystemJacobian(t::Real, u::AbstractVector, J::Matrix, invRe::Real, ISADJOINT)
     @inbounds begin
