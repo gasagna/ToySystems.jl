@@ -1,15 +1,14 @@
 module LorenzEq
 
+using LinearAlgebra
+using ToySystems: no_forcing, _mayswap
+
 export Lorenz,
-       LorenzLin,
-       no_forcing,
-       dfdρ_forcing,
-       f_forcng
+       LorenzLin
 
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
+# NONLINEAR EQUATIONS
 
-# ///////////////////
-# Nonlinear equations
-# ///////////////////
 struct Lorenz end
 
 function (eq::Lorenz)(t, u, dudt)
@@ -20,63 +19,57 @@ function (eq::Lorenz)(t, u, dudt)
     return dudt
 end
 
-
-# //////////////////////////////////////////////
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 # FORCING FUNCTIONS FOR THE LINEARISED EQUATIONS
-# //////////////////////////////////////////////
 
 # sensitivity with respect to rho
 dfdρ_forcing(t, u, dudt, v, dvdt) = (@inbounds dvdt[2] += u[1]; dvdt)
 
 
-# ////////////////////
-# Linearised equations
-# ////////////////////
-struct LorenzLin{N, T<:NTuple{N, Base.Callable}}
-    forcings::T # a tuple of functions with signature (t, u, dudt, v, dvdt)
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
+# LINEARISED EQUATIONS
+
+struct LorenzLin{F, ISADJOINT}
+          J::Matrix{Float64}
+    forcing::F
 end
 
-# slurp arguments
-LorenzLin(x::Vararg{Any, N}) where {N} = LorenzLin{N, typeof(x)}(x)
+LorenzLin(isadjoint::Bool, forcing::F = no_forcing) where {F} =
+    LorenzLin{F, isadjoint}(zeros(3, 3), forcing)
 
-# defaults to homogeneous problem
-LorenzLin() = LorenzLin(no_forcing)
-
-# Linearised equations
-@generated function (eq::LorenzLin{N})(t, u, dudt, v, dvdt) where {N}
+@generated function (eq::LorenzLin{F, ISADJOINT})(t::Real,
+                                                  u::AbstractVector,
+                                               dudt::AbstractVector,
+                                                  v::AbstractVector,
+                                               dvdt::AbstractVector) where {F, ISADJOINT}
     quote
-        # unpack
-        x , y , z  = u
-        x′, y′, z′ = v
-
-        # homogeneous linear part
-        @inbounds dvdt[1] =  10 * (y′ - x′)
-        @inbounds dvdt[2] =  (28-z)*x′ - y′ - x*z′
-        @inbounds dvdt[3] = -8/3*z′ + x*y′ + x′*y
-
-        # add forcing (can be nothing too)
-        Base.Cartesian.@nexprs $N i->eq.forcings[i](t, u, dudt, v, dvdt)
-
+        _LorenzJacobian(t, u, eq.J, $(Val(ISADJOINT)))
+        LinearAlgebra.mul!(dvdt, eq.J, v)
+        eq.forcing(t, u, dudt, v, dvdt)
         return dvdt
     end
 end
 
-struct LorenzJacobian 
-    gamma::Float64
-end
+(eq::LorenzLin)(t::Real,
+                u::AbstractVector,
+                v::AbstractVector,
+             dvdt::AbstractVector) = eq(t, u, u, v, dvdt)
 
-function (eq::LorenzJacobian)(t, u, J)
+function _LorenzJacobian(t::Real,
+                         u::AbstractVector,
+                         J::Matrix,
+                 ISADJOINT::Val)
     x, y, z = u
     @inbounds begin
-        J[1, 1] = -10
-        J[1, 2] =  10
-        J[1, 3] =  0
-        J[2, 1] =  28 - z/eq.gamma
-        J[2, 2] =  -1
-        J[2, 3] =  -x/eq.gamma
-        J[3, 1] =  y*eq.gamma
-        J[3, 2] =  x*eq.gamma
-        J[3, 3] =  -8/3
+        J[_mayswap(1, 1, ISADJOINT)...] = -10
+        J[_mayswap(1, 2, ISADJOINT)...] =  10
+        J[_mayswap(1, 3, ISADJOINT)...] =  0
+        J[_mayswap(2, 1, ISADJOINT)...] =  28 - z
+        J[_mayswap(2, 2, ISADJOINT)...] =  -1
+        J[_mayswap(2, 3, ISADJOINT)...] =  -x
+        J[_mayswap(3, 1, ISADJOINT)...] =  y
+        J[_mayswap(3, 2, ISADJOINT)...] =  x
+        J[_mayswap(3, 3, ISADJOINT)...] =  -8/3
     end
     return J
 end
