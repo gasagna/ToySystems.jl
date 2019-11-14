@@ -61,8 +61,8 @@ struct NineModeSystemLin{ISADJOINT, N, T<:NTuple{N, Base.Callable}}
 end
 
 # slurp arguments
-NineModeSystemLin(Re::Real, isadjoint::Bool, x::Vararg{Any, N}) where {N} =
-    NineModeSystemLin{isadjoint, N, typeof(x)}(zeros(9, 9), 1/Re, x)
+NineModeSystemLin(Re::Real, isadjoint::Bool, forcings::Vararg{Any, N}) where {N} =
+    NineModeSystemLin{isadjoint, N, typeof(forcings)}(zeros(9, 9), 1/Re, forcings)
 
 # defaults to homogeneous problem
 NineModeSystemLin(Re::Real) = NineModeSystemLin(Re, no_forcing)

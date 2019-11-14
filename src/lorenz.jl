@@ -4,17 +4,22 @@ using LinearAlgebra
 using ToySystems: no_forcing, _mayswap
 
 export Lorenz,
-       LorenzLin
+       LorenzLin,
+       dfdρ_forcing
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 # NONLINEAR EQUATIONS
 
-struct Lorenz end
+struct Lorenz 
+    ρ::Float64
+    Lorenz(ρ::Real=28) = new(ρ)
+end
+
 
 function (eq::Lorenz)(t, u, dudt)
     x, y, z = u
     @inbounds dudt[1] =  10 * (y - x)
-    @inbounds dudt[2] =  28 *  x - y - x*z
+    @inbounds dudt[2] =  eq.ρ *  x - y - x*z
     @inbounds dudt[3] = -8/3 * z + x*y
     return dudt
 end
@@ -22,8 +27,9 @@ end
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 # FORCING FUNCTIONS FOR THE LINEARISED EQUATIONS
 
-# sensitivity with respect to rho
+# sensitivity with respect to ρ
 dfdρ_forcing(t, u, dudt, v, dvdt) = (@inbounds dvdt[2] += u[1]; dvdt)
+dfdρ_forcing(dvdt, u) = (@inbounds dvdt .= 0; dvdt[2] += u[1]; dvdt)
 
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
@@ -32,10 +38,11 @@ dfdρ_forcing(t, u, dudt, v, dvdt) = (@inbounds dvdt[2] += u[1]; dvdt)
 struct LorenzLin{F, ISADJOINT}
           J::Matrix{Float64}
     forcing::F
+          ρ::Float64
 end
 
-LorenzLin(isadjoint::Bool, forcing::F = no_forcing) where {F} =
-    LorenzLin{F, isadjoint}(zeros(3, 3), forcing)
+LorenzLin(isadjoint::Bool=false, ρ::Real=28, forcing::F = no_forcing) where {F} =
+    LorenzLin{F, isadjoint}(zeros(3, 3), forcing, ρ)
 
 @generated function (eq::LorenzLin{F, ISADJOINT})(t::Real,
                                                   u::AbstractVector,
@@ -43,7 +50,7 @@ LorenzLin(isadjoint::Bool, forcing::F = no_forcing) where {F} =
                                                   v::AbstractVector,
                                                dvdt::AbstractVector) where {F, ISADJOINT}
     quote
-        _LorenzJacobian(t, u, eq.J, $(Val(ISADJOINT)))
+        _LorenzJacobian(t, u, eq.J, $(Val(ISADJOINT)), eq.ρ)
         LinearAlgebra.mul!(dvdt, eq.J, v)
         eq.forcing(t, u, dudt, v, dvdt)
         return dvdt
@@ -58,13 +65,13 @@ end
 function _LorenzJacobian(t::Real,
                          u::AbstractVector,
                          J::Matrix,
-                 ISADJOINT::Val)
+                 ISADJOINT::Val, ρ::Real)
     x, y, z = u
     @inbounds begin
         J[_mayswap(1, 1, ISADJOINT)...] = -10
         J[_mayswap(1, 2, ISADJOINT)...] =  10
         J[_mayswap(1, 3, ISADJOINT)...] =  0
-        J[_mayswap(2, 1, ISADJOINT)...] =  28 - z
+        J[_mayswap(2, 1, ISADJOINT)...] =  ρ - z
         J[_mayswap(2, 2, ISADJOINT)...] =  -1
         J[_mayswap(2, 3, ISADJOINT)...] =  -x
         J[_mayswap(3, 1, ISADJOINT)...] =  y
