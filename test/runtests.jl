@@ -21,12 +21,14 @@ end
     F3 = ToySystems.RosslerEq.Rossler((0.492, 2, 4))
     F4 = ToySystems.RosslerEq.Rossler(0.3)
     F5 = ToySystems.LorenzEq.Lorenz()
+    F6 = ToySystems.KSEq.KS(10, 10, 1)
 
     for (u, dudt, F) in [(zeros(9), zeros(9), F1),
                          (zeros(4), zeros(4), F2),
                          (zeros(3), zeros(3), F3),
                          (zeros(3), zeros(3), F4),
-                         (zeros(3), zeros(3), F5)]
+                         (zeros(3), zeros(3), F5),
+                         (zeros(8), zeros(8), F6)]
         @test_nowarn F(0.0, u, dudt)
         alloc = @allocated F(0.0, u, dudt)
         @test alloc == 0
