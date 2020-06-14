@@ -221,14 +221,25 @@ end
 
 # the energy density, the integral from 0 to L of u squared in dx
 function energy(u::AbstractVector, L::Real)
+    # number of dofs
     M = length(u)
+        
+    # grid spacing
+    h = L/(M+1)
+
+    # eg for N = 10, L = 9 (there are only M=8 degrees of freedom)
+    # g stands for ghost point
+    # g 0                 0 g
+    # ⋅ 0 1 2 3 4 5 6 7 8 9 ⋅
+    #   1 2 2 2 2 2 2 2 2 1  # time counted in trapezoidal rule
+    # then divide by two for the area of a trapezium
     @inbounds begin
-        I = u[1]^2
-        @simd for i = 2:M
-            I += u[i]^2
+        I = 0.5*(u[1]^2 + u[M]^2) * h
+        @simd for i = 2:M-1
+            I += u[i]^2 * h
         end
     end
-    return I/2L
+    return I/L
 end
 
 end
