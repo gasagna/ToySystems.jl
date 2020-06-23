@@ -7,7 +7,7 @@ import LinearAlgebra
 
 using ToySystems: no_forcing
 
-export KS, KSTan, energy
+export KS, KSTan, energy, dfdc_forcing, denergydu_dot_v
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 # EQUATIONS
@@ -240,6 +240,61 @@ function energy(u::AbstractVector, L::Real)
         end
     end
     return I/L
+end
+
+# the dot product between the energy gradient and v
+function denergydu_dot_v(u::AbstractVector, v::AbstractVector, L::Real)
+    # number of dofs
+    M = length(u)
+        
+    # grid spacing
+    h = L/(M+1)
+
+    # eg for N = 10, L = 9 (there are only M=8 degrees of freedom)
+    # g stands for ghost point
+    # g 0                 0 g
+    # ⋅ 0 1 2 3 4 5 6 7 8 9 ⋅
+    #   1 2 2 2 2 2 2 2 2 1  # time counted in trapezoidal rule
+    # then divide by two for the area of a trapezium
+    @inbounds begin
+        I = 0.5*(u[1]*v[1] + u[M]*v[M]) * h/L
+        @simd for i = 2:M-1
+            I += u[i]*v[i] * h/L
+        end
+    end
+    return 2*I
+end
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
+# FORCING FUNCTIONS FOR THE LINEARISED EQUATIONS
+
+# sensitivity with respect to ρ
+# dfdc_forcing(t, u, dudt, v, dvdt) = (@inbounds dvdt[2] += u[1]; dvdt)
+# dfdρ_forcing(dvdt, u) = (@inbounds dvdt .= 0; dvdt[2] += u[1]; dvdt)
+
+struct dfdc_forcing
+    L::Float64
+end
+
+function (f::dfdc_forcing)(t, u, dudt, v, dvdt)
+    # number of degrees of freedom
+    M = length(u)
+    
+    # grid spacing
+    h = f.L/(M+1)
+
+    # eg for N = 10, L = 9 (there are only M=8 degrees of freedom)
+    # g stands for ghost point
+    # g 0                 0 g
+    # ⋅ 0 1 2 3 4 5 6 7 8 9 ⋅
+    @inbounds begin
+        dvdt[1]   += - ( u[2] - 0.0   )/(2h)
+        dvdt[M]   += - ( 0.0  - u[M-1])/(2h)
+        @simd for i = 2:M-1
+            dvdt[i] += - (u[i+1] - u[i-1])/(2h)
+        end
+    end
+    return dudt
 end
 
 end
