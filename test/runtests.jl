@@ -22,13 +22,15 @@ end
     F4 = ToySystems.RosslerEq.Rossler(0.3)
     F5 = ToySystems.LorenzEq.Lorenz()
     F6 = ToySystems.KSEq.KS(10, 10, 1)
+    F7 = ToySystems.Sprott94.Sprott94F()
 
     for (u, dudt, F) in [(zeros(9), zeros(9), F1),
                          (zeros(4), zeros(4), F2),
                          (zeros(3), zeros(3), F3),
                          (zeros(3), zeros(3), F4),
                          (zeros(3), zeros(3), F5),
-                         (zeros(8), zeros(8), F6)]
+                         (zeros(8), zeros(8), F6),
+                         (zeros(3), zeros(3), F7)]
         @test_nowarn F(0.0, u, dudt)
         alloc = @allocated F(0.0, u, dudt)
         @test alloc == 0
@@ -58,12 +60,17 @@ end
     L5 = ToySystems.LorenzEq.LorenzLin(false)
     A5 = ToySystems.LorenzEq.LorenzLin(true)
 
+    F7 = ToySystems.Sprott94.Sprott94F()
+    L7 = ToySystems.Sprott94.Sprott94FLin(false)
+    A7 = ToySystems.Sprott94.Sprott94FLin(true)
+
     for (u, dudt, v, dvdt, F, L, A) in [
             (rand(9), rand(9), rand(9), rand(9), F1, L1, A1),
             (rand(4), rand(4), rand(4), rand(4), F2, L2, A2),
             (rand(3), rand(3), rand(3), rand(3), F3, L3, A3),
             (rand(3), rand(3), rand(3), rand(3), F4, L4, A4),
-            (rand(3), rand(3), rand(3), rand(3), F5, L5, A5)]
+            (rand(3), rand(3), rand(3), rand(3), F5, L5, A5),
+            (rand(3), rand(3), rand(3), rand(3), F7, L7, A7)]
         # check call interface
         @test_nowarn L(0.0, u, dudt, v, dvdt)
         alloc = @allocated L(0.0, u, dudt, v, dvdt)

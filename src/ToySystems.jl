@@ -24,5 +24,6 @@ include("rossler.jl")
 include("ninemodesystem.jl")
 include("aeroelastic.jl")
 include("lorenz.jl")
+include("sprott94.jl")
 
 end
